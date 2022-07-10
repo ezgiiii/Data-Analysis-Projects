@@ -91,8 +91,8 @@ cltv_df["exp_average_value"] = ggf.fit(cltv_df["frequency"], cltv_df["monetary_c
 
 cltv = ggf.customer_lifetime_value(bgf,
                                    cltv_df['frequency'], cltv_df['recency_cltv_weekly'], cltv_df['T_weekly'], cltv_df['monetary_cltv_avg'],
-                                   time=6, # ay
-                                   freq="W", # T'nin frekans bilgisi
+                                   time=6,
+                                   freq="W",
                                    discount_rate=0.01)
 
 cltv_df["cltv"] = cltv
