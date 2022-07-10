@@ -46,6 +46,7 @@ df[date_columns] = df[date_columns].apply(pd.to_datetime)
 df["last_order_date"].max()
 analysis_date = dt.datetime(2021, 6, 1)
 
+# CLTV = BG/NBD Model * Gamma gamma submodel
 cltv_df = pd.DataFrame()
 cltv_df["customer_id"] = df["master_id"]
 cltv_df["recency_cltv_weekly"] = ((df["last_order_date"] - df["first_order_date"]).astype('timedelta64[D]')) / 7
