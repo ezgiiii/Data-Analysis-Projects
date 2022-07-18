@@ -9,11 +9,11 @@ pd.set_option('display.float_format', lambda x: '%.3f' % x)
 
 df.head(10)
 df.columns
-desc=df.describe().T  # aykırı değer var
-df.isnull().sum() #null değer yok
+desc=df.describe().T
+df.isnull().sum()
 
 df.dtypes
-df.info
+df.info()
 
 df["total_shopping_num"] = df["order_num_total_ever_online"] + df["order_num_total_ever_offline"]
 df["total_spend"] = df["customer_value_total_ever_online"] + df["customer_value_total_ever_offline"]
