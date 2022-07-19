@@ -53,20 +53,7 @@ print("p-value = %.4f" % pvalue)
 # p-value is higher than 0.005
 # So We can finally say that our H0 hypothesis is statistically accurate.
 # There aren't any difference between control and test group.
-# Then, we can't say that maximum bidding is any different than average bidding.
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Then, we can't say that maximum bidding is any different than average bidding for this company.
 
 
 
