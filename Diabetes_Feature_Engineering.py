@@ -84,20 +84,20 @@ def grab_col_names(dataframe, cat_th=10, car_th=20):
 cat_cols, num_cols, cat_but_car = grab_col_names(df)
 
 
-# df.groupby("Outcome").agg({"Pregnancies": df["Pregnancies"].value_counts() / len(df["Pregnancies"]),
-#                            "Glucose": df["Glucose"].value_counts() / len(df["Glucose"]),
-#                            "BloodPressure": df["BloodPressure"].value_counts() / len(df["BloodPressure"]),
-#                            "SkinThickness": df["SkinThickness"].value_counts() / len(df["SkinThickness"]),
-#                            "Insulin": df["Insulin"].value_counts() / len(df["Insulin"]),
-#                            "BMI": df["BMI"].value_counts() / len(df["BMI"]),
-#                            "DiabetesPedigreeFunction": df["DiabetesPedigreeFunction"].value_counts() / len(df["DiabetesPedigreeFunction"]),
-#                            "Age": df["Age"].value_counts() / len(df["Age"])})
+def target_summary_with_num(dataframe, target, numerical_col):
+    print(dataframe.groupby(target).agg({numerical_col: "mean"}), end="\n\n\n")
 
 
+for col in num_cols:
+    target_summary_with_num(df, "Outcome", col)
 
-cols=['Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 'BMI', 'Age']
 
-df[cols] = df[cols].replace(["0",0], np.nan)
+# We replace 0 values with NaN except Outcome and Pregnancy.
+# Outcome and Pregnancy can be zero but the other values can not be zero.
+zero_columns = [col for col in df.columns if (df[col].min() == 0 and col not in ["Pregnancies", "Outcome"])]
+
+for col in zero_columns:
+    df[col] = np.where(df[col] == 0, np.nan, df[col])
 
 def missing_values_table(dataframe, na_name=False):
     na_columns = [col for col in dataframe.columns if dataframe[col].isnull().sum() > 0]
@@ -127,17 +127,16 @@ def missing_vs_target(dataframe, target, na_columns):
 
 missing_vs_target(df, "Outcome", na_cols)
 
-# Predict the missing values
-
+# I want to predict the missing values
 # dff=pd.get_dummies(df, drop_first=True)  every column has numeric values we don't need this code
 
 # Standardizing the variables
 # MinMaxScaler
-
 scaler = MinMaxScaler()
-df=pd.DataFrame(scaler.fit_transform(df), columns=df.columns)
+df = pd.DataFrame(scaler.fit_transform(df), columns=df.columns)
+
 imputer = KNNImputer(n_neighbors=5)
-df=pd.DataFrame(imputer.fit_transform(df), columns=df.columns)
+df = pd.DataFrame(imputer.fit_transform(df), columns=df.columns)
 
 # df has scaled values. We will change them back to the way we understand.
 df = pd.DataFrame(scaler.inverse_transform(df), columns=df.columns)
@@ -165,12 +164,9 @@ def check_outlier(dataframe, col_name):
 for col in df.columns:
     print(col, check_outlier(df,col))
 
-# masking with quartiles won't do the trick in this point because
-# I know that BMI, BloodPressure and Glucose can not be 0.
-# I can not choose the same quartile value for each column
 
-# Instead lets look at Local Outlier Factor to locate the outliers considering columns together.
-# Local outlier factor
+# Lets look at Local Outlier Factor to locate the outliers considering columns together first.
+# Local Outlier Factor
 
 clf = LocalOutlierFactor(n_neighbors=20)
 clf.fit_predict(df)
@@ -179,7 +175,6 @@ df_scores = clf.negative_outlier_factor_
 
 # we decide a threshold value to choose outlier
 # Elbow Method:
-
 scores = pd.DataFrame(np.sort(df_scores))
 scores.plot(stacked=True, xlim=[0, 50], style='.-')
 plt.show()
@@ -192,7 +187,6 @@ df[df_scores < threshold].drop(axis=0, labels=df[df_scores < threshold].index)
 
 
 # correlation heatmap
-
 sns.heatmap(df.corr(),annot=True)
 plt.show()
 
