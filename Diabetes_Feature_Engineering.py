@@ -3,8 +3,11 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder, StandardScaler
 from sklearn.impute import KNNImputer
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score,roc_auc_score
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 
 
 pd.set_option('display.max_columns', None)
@@ -207,15 +210,88 @@ for col in num_cols:
 # Feature Extraction
 df.describe([0.01, 0.05, 0.75, 0.90, 0.99]).T
 
+df['NEW_BMI'] = pd.cut(x=df['BMI'], bins=[0, 18.5, 24.9, 29.9, 100],labels=["Underweight", "Healthy", "Overweight", "Obese"])
+
 # Glucose 140 ın altı risk yok 140-200 diyabet riski var 200 ve üzeri diyabet
+df["NEW_GLUCOSE"] = pd.cut(x=df["Glucose"], bins=[0, 140, 200, 300], labels=["Normal", "Prediabetes", "Diabetes"])
+
 # blood pressure 70'in altı düşük 70-80 normal 80 üstü büyük
+df["BLOOD_PRESSURE"] = pd.cut(x= df["BloodPressure"], bins=[0,70,80,150], labels= ["Low", "Normal", "High"])
+
+# Pregnancies
+df["NEW_PREGNANCIES"] = pd.cut(x=df["Pregnancies"], bins= [-1,6,11,17], labels=["0_6","6_11","11_17"])
+
+# Pregnancy does not have a direct correlation to diabetes but when a woman has a tendency to diabetes
+# after pregnancy she has a higher chance to has diabetes.
+# Lets declare NEW_GLUCOSE_PREGNANCY variable
 
 
 
+df.loc[(df["Glucose"]<=140) & (df["Pregnancies"] <= 6) , "NEW_GLUCOSE_PREGNANCY"] = "normal0_6"
+df.loc[((df["Glucose"]>140) & (df["Glucose"]<200)) & (df["Pregnancies"] <= 6) , "NEW_GLUCOSE_PREGNANCY"] = "Prediabetes0_6"
+df.loc[(df["Glucose"]>=200) & (df["Pregnancies"] <= 6) , "NEW_GLUCOSE_PREGNANCY"] = "Diabetes0_6"
+
+df.loc[(df["Glucose"]<=140) & ((df["Pregnancies"] > 6) & (df["Pregnancies"] <= 11)), "NEW_GLUCOSE_PREGNANCY"] = "normal6_11"
+df.loc[((df["Glucose"]>140) & (df["Glucose"]<200)) & ((df["Pregnancies"] > 6) & (df["Pregnancies"] <= 11)) , "NEW_GLUCOSE_PREGNANCY"] = "Prediabetes6_11"
+df.loc[(df["Glucose"]>=200) & ((df["Pregnancies"] > 6) & (df["Pregnancies"] <= 11)) , "NEW_GLUCOSE_PREGNANCY"] = "Diabetes6_11"
+
+df.loc[(df["Glucose"]<=140) & ((df["Pregnancies"] > 11) & (df["Pregnancies"] <= 17)), "NEW_GLUCOSE_PREGNANCY"] = "normal11_17"
+df.loc[((df["Glucose"]>140) & (df["Glucose"]<200)) & ((df["Pregnancies"] > 11) & (df["Pregnancies"] <= 17)) , "NEW_GLUCOSE_PREGNANCY"] = "Prediabetes11_17"
+df.loc[(df["Glucose"]>=200) & ((df["Pregnancies"] > 11) & (df["Pregnancies"] <= 17)) , "NEW_GLUCOSE_PREGNANCY"] = "Diabetes11_17"
+
+df["NEW_GLUCOSE*INSULIN"] = df["Glucose"] * df["Insulin"]
+
+df.columns = [col.upper() for col in df.columns]
+
+cat_cols, num_cols, cat_but_car = grab_col_names(df)
+
+
+# LABEL ENCODING for numerical columns
+df["OUTCOME"] = df["OUTCOME"].astype(str)
+binary_cols = [col for col in df.columns if df[col].dtypes == "O" and df[col].nunique() == 2]
+
+labelencoder = LabelEncoder()
+labelencoder.fit_transform(df[binary_cols])
+
+
+# One-Hot Encoding for categorical columns
+cat_cols = [col for col in cat_cols if col not in binary_cols and col not in ["OUTCOME"]]
+
+df = pd.get_dummies(df, columns=cat_cols, drop_first=True)
+
+scaler = StandardScaler()
+df[num_cols] = scaler.fit_transform(df[num_cols])
 
 
 
+# MODELLING
+y = df["OUTCOME"]
+X = df.drop("OUTCOME", axis=1)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30, random_state=17)
+
+rf_model = RandomForestClassifier(random_state=46).fit(X_train, y_train)
+y_pred = rf_model.predict(X_test)
+
+print(f"Accuracy: {round(accuracy_score(y_pred, y_test), 2)}")
+print(f"Recall: {round(recall_score(y_pred,y_test),3)}")
+print(f"Precision: {round(precision_score(y_pred,y_test), 2)}")
+print(f"F1: {round(f1_score(y_pred,y_test), 2)}")
+print(f"Auc: {round(roc_auc_score(y_pred,y_test), 2)}")
 
 
 
+def plot_importance(model, features, num=len(X), save=False):
+    feature_imp = pd.DataFrame({'Value': model.feature_importances_, 'Feature': features.columns})
+    print(feature_imp.sort_values("Value",ascending=False))
+    plt.figure(figsize=(10, 10))
+    sns.set(font_scale=1)
+    sns.barplot(x="Value", y="Feature", data=feature_imp.sort_values(by="Value",
+                                                                     ascending=False)[0:num])
+    plt.title('Features')
+    plt.tight_layout()
+    plt.show()
+    if save:
+        plt.savefig('importances.png')
+
+plot_importance(rf_model, X)
 
